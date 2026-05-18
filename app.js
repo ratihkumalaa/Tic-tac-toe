@@ -12,25 +12,25 @@ let winPatterns = [];
 // ---      SISTEM AUDIO INTEGRASI        ---
 // ==========================================
 let audioCtx = null;
-let bgmAudio = null; // Menampung objek audio mp3
+let bgmAudio = null; 
 let audioEnabled = false;
 
 function initAudio() {
     if (audioCtx) return;
     
-    // 1. Inisialisasi AudioContext untuk Efek Suara
+    // 1. Inisialisasi AudioContext untuk Efek Suara SFX
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // 2. Inisialisasi File music.mp3 untuk Musik Latar
+    // 2. Inisialisasi Musik Latar (.mp3)
     bgmAudio = new Audio('music.mp3');
-    bgmAudio.loop = true; // Otomatis mengulang jika habis
-    bgmAudio.volume = 0.2; // Sesuaikan volume musik (0.0 sampai 1.0)
+    bgmAudio.loop = true; 
+    bgmAudio.volume = 0.05; // VOLUME DIALIHKAN JADI LEBIH PELAN (5%) AGAR NYAMAN DI TELINGA
     
     audioEnabled = true;
     startBGM();
 }
 
-// Efek Suara SFX (Menggunakan Web Audio API internal)
+// Efek Suara SFX Sintetis
 function playSound(type) {
     if (!audioEnabled || !audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -44,43 +44,40 @@ function playSound(type) {
 
     if (type === 'click') {
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
-        gain.gain.setValueAtTime(0.15, now);
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+        gain.gain.setValueAtTime(0.12, now);
         gain.gain.linearRampToValueAtTime(0, now + 0.08);
         osc.start(now);
         osc.stop(now + 0.08);
     } else if (type === 'win') {
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(400, now);
-        osc.frequency.setValueAtTime(600, now + 0.1);
-        osc.frequency.setValueAtTime(900, now + 0.2);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.linearRampToValueAtTime(0, now + 0.4);
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(554, now + 0.1);
+        osc.frequency.setValueAtTime(659, now + 0.2);
+        osc.frequency.setValueAtTime(880, now + 0.3);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.5);
         osc.start(now);
-        osc.stop(now + 0.4);
+        osc.stop(now + 0.5);
     } else if (type === 'draw') {
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(250, now);
-        osc.frequency.linearRampToValueAtTime(180, now + 0.2);
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(150, now + 0.25);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.25);
         osc.start(now);
-        osc.stop(now + 0.2);
+        osc.stop(now + 0.25);
     }
 }
 
-// Menjalankan music.mp3 secara aman
 function startBGM() {
     if (!audioEnabled || !bgmAudio) return;
-    
     bgmAudio.play().catch(error => {
-        // Mencegah error jika browser memblokir autoplay di awal
-        console.log("Autoplay musik diblokir sementara oleh browser sebelum ada klik.");
+        console.log("Autoplay musik latar tertahan privasi browser.");
     });
 }
 
-// Tombol ON/OFF Suara & Musik
 function toggleAudio() {
     if (!audioCtx) {
         initAudio();
@@ -99,6 +96,59 @@ function toggleAudio() {
         btn.innerHTML = '<i class="fas fa-volume-mute"></i>';
         if (bgmAudio) bgmAudio.pause();
     }
+}
+
+// ==========================================
+// ---      ANIMASI CLICK RIPPLE          ---
+// ==========================================
+function createRipple(event) {
+    const button = event.currentTarget;
+    
+    // Membuat elemen lingkaran untuk riak air
+    const circle = document.createElement("span");
+    const diameter = Math.max(button.clientWidth, button.clientHeight);
+    const radius = diameter / 2;
+
+    // Mendapatkan posisi klik relatif terhadap tombol
+    const rect = button.getBoundingClientRect();
+    const x = event.clientX - rect.left - radius;
+    const y = event.clientY - rect.top - radius;
+
+    circle.style.width = circle.style.height = `${diameter}px`;
+    circle.style.left = `${x}px`;
+    circle.style.top = `${y}px`;
+    circle.style.position = "absolute";
+    circle.style.borderRadius = "50%";
+    circle.style.transform = "scale(0)";
+    circle.style.background = "rgba(0, 210, 255, 0.4)";
+    circle.style.pointerEvents = "none";
+    circle.style.animation = "rippleEffect 0.5s linear";
+
+    // CSS Animation Injector darurat (jika belum dimasukkan di style.css)
+    if (!document.getElementById("ripple-style")) {
+        const style = document.createElement("style");
+        style.id = "ripple-style";
+        style.innerHTML = `
+            @keyframes rippleEffect {
+                to { transform: scale(2.5); opacity: 0; }
+            }
+            .btn, .box, .icon-btn, .size-opt, .mode-opt { position: relative; overflow: hidden; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    button.appendChild(circle);
+
+    // Hapus elemen setelah animasi selesai agar memori bersih
+    setTimeout(() => circle.remove(), 500);
+}
+
+// Memasang trigger riak ke seluruh elemen interaktif yang ada di HTML statis
+function bindRippleEvents() {
+    const targets = document.querySelectorAll('.btn, .icon-btn, .size-opt, .mode-opt');
+    targets.forEach(element => {
+        element.addEventListener('click', createRipple);
+    });
 }
 
 // --- SISTEM SKOR & DATA ---
@@ -127,7 +177,7 @@ const resetAllData = () => {
 
 // --- NAVIGASI ---
 function showScene(id) {
-    initAudio(); // Aktifkan audio ketika user pertama kali mengklik tombol navigasi menu
+    initAudio(); 
     playSound('click');
     document.querySelectorAll('.scene').forEach(s => s.classList.add('hide'));
     document.getElementById(id).classList.remove('hide');
@@ -153,7 +203,8 @@ function pickSymbol(s) {
 
 // --- GAME LOGIC ---
 document.querySelectorAll('.size-opt').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+        createRipple(e);
         playSound('click');
         document.querySelectorAll('.size-opt').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -161,7 +212,8 @@ document.querySelectorAll('.size-opt').forEach(btn => {
     };
 });
 
-document.getElementById('start-game-btn').onclick = () => {
+document.getElementById('start-game-btn').onclick = (e) => {
+    createRipple(e);
     showScene('game-scene');
     resetGame();
 };
@@ -186,7 +238,10 @@ const generateBoard = () => {
         let b = document.createElement("div");
         b.className = "box";
         b.dataset.index = i;
-        b.onclick = () => handleMove(i, b);
+        b.onclick = (e) => {
+            createRipple(e); // Beri efek riak pada kotak papan saat bertarung
+            handleMove(i, b);
+        };
         board.appendChild(b);
     }
     calcWinPatterns();
@@ -199,7 +254,10 @@ const handleMove = (idx, el) => {
     let sym = turnX ? "X" : "O";
     boardState[idx] = sym;
     el.innerText = sym;
+    
+    // Beri warna neon transisi fiksi yang keren saat simbol muncul
     el.style.color = (sym === "X") ? "var(--accent-blue)" : "var(--accent-orange)";
+    el.style.textShadow = (sym === "X") ? "0 0 10px rgba(0, 210, 255, 0.6)" : "0 0 10px rgba(249, 115, 22, 0.6)";
     el.classList.add("disabled");
     count++;
 
@@ -212,7 +270,7 @@ const handleMove = (idx, el) => {
     }
 };
 
-// --- AI ---
+// --- GAME AI SYSTEM ---
 const computerMove = () => {
     if(!gameActive) return;
     let bestIdx = (boardSize === 3) ? getBestMove(boardState) : getRandomMove();
@@ -276,7 +334,7 @@ function getRandomMove() {
     return avail[Math.floor(Math.random() * avail.length)];
 }
 
-// --- UTILS ---
+// --- PEMENANG UTILS ---
 const checkWinner = () => {
     let res = checkStatic(boardState);
     if (res) {
@@ -316,5 +374,7 @@ const calcWinPatterns = () => {
     winPatterns.push(d1, d2);
 };
 
+// Inisialisasi awal
 loadData();
+bindRippleEvents();
 showScene('main-menu');
