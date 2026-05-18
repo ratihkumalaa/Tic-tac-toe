@@ -9,27 +9,31 @@ let boardState = [];
 let winPatterns = [];
 
 // ==========================================
-// --- WEB AUDIO SYSTEM (TANPA FILE MP3) ---
+// ---      SISTEM AUDIO INTEGRASI        ---
 // ==========================================
 let audioCtx = null;
-let bgmNode = null;
+let bgmAudio = null; // Menampung objek audio mp3
 let audioEnabled = false;
 
 function initAudio() {
     if (audioCtx) return;
+    
+    // 1. Inisialisasi AudioContext untuk Efek Suara
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // 2. Inisialisasi File music.mp3 untuk Musik Latar
+    bgmAudio = new Audio('music.mp3');
+    bgmAudio.loop = true; // Otomatis mengulang jika habis
+    bgmAudio.volume = 0.2; // Sesuaikan volume musik (0.0 sampai 1.0)
+    
     audioEnabled = true;
     startBGM();
 }
 
-// Efek Suara Synth Elektrik
+// Efek Suara SFX (Menggunakan Web Audio API internal)
 function playSound(type) {
     if (!audioEnabled || !audioCtx) return;
-    
-    // Aktifkan AudioContext jika tertidur karena kebijakan browser
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
 
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -66,34 +70,17 @@ function playSound(type) {
     }
 }
 
-// Background Music Looping Otomatis (Ambience Cyberpunk)
+// Menjalankan music.mp3 secara aman
 function startBGM() {
-    if (!audioEnabled || !audioCtx) return;
-    try {
-        // Melodi Synth Looper Sederhana
-        bgmNode = audioCtx.createOscillator();
-        const bgmGain = audioCtx.createGain();
-        
-        bgmNode.type = 'sine';
-        bgmNode.frequency.setValueAtTime(110, audioCtx.currentTime); // Nada Bass A
-        
-        bgmGain.gain.setValueAtTime(0.04, audioCtx.currentTime); // Volume Background sangat kecil agar nyaman
-        
-        bgmNode.connect(bgmGain);
-        bgmGain.connect(audioCtx.destination);
-        bgmNode.start();
-        
-        // Modulasi frekuensi berkala agar berirama sci-fi
-        setInterval(() => {
-            if (audioEnabled && bgmNode && audioCtx) {
-                const notes = [110, 130, 146, 165];
-                const randomNote = notes[Math.floor(Math.random() * notes.length)];
-                bgmNode.frequency.exponentialRampToValueAtTime(randomNote, audioCtx.currentTime + 1);
-            }
-        }, 2000);
-    } catch(e) { console.log("BGM Init blocked"); }
+    if (!audioEnabled || !bgmAudio) return;
+    
+    bgmAudio.play().catch(error => {
+        // Mencegah error jika browser memblokir autoplay di awal
+        console.log("Autoplay musik diblokir sementara oleh browser sebelum ada klik.");
+    });
 }
 
+// Tombol ON/OFF Suara & Musik
 function toggleAudio() {
     if (!audioCtx) {
         initAudio();
@@ -107,10 +94,10 @@ function toggleAudio() {
     if (audioEnabled) {
         btn.innerHTML = '<i class="fas fa-volume-up"></i>';
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        if (!bgmNode) startBGM();
+        if (bgmAudio) bgmAudio.play().catch(() => {});
     } else {
         btn.innerHTML = '<i class="fas fa-volume-mute"></i>';
-        if (audioCtx.state === 'running') audioCtx.resume(); 
+        if (bgmAudio) bgmAudio.pause();
     }
 }
 
@@ -140,7 +127,7 @@ const resetAllData = () => {
 
 // --- NAVIGASI ---
 function showScene(id) {
-    initAudio(); // Memicu inisialisasi audio dari gestur pengguna pertama
+    initAudio(); // Aktifkan audio ketika user pertama kali mengklik tombol navigasi menu
     playSound('click');
     document.querySelectorAll('.scene').forEach(s => s.classList.add('hide'));
     document.getElementById(id).classList.remove('hide');
@@ -161,7 +148,6 @@ function pickSymbol(s) {
     playerSymbol = s;
     cpuSymbol = (s === "X") ? "O" : "X";
     document.querySelectorAll('.mode-opt').forEach(b => b.classList.remove('active'));
-    document.getElementById('pick' + s).add;
     document.getElementById('pick' + s).classList.add('active');
 }
 
@@ -209,7 +195,7 @@ const generateBoard = () => {
 const handleMove = (idx, el) => {
     if (boardState[idx] !== "" || !gameActive) return;
     
-    playSound('click'); // Mainkan efek klik pion ditaruh
+    playSound('click'); 
     let sym = turnX ? "X" : "O";
     boardState[idx] = sym;
     el.innerText = sym;
@@ -226,7 +212,7 @@ const handleMove = (idx, el) => {
     }
 };
 
-// --- AI CERDAS ---
+// --- AI ---
 const computerMove = () => {
     if(!gameActive) return;
     let bestIdx = (boardSize === 3) ? getBestMove(boardState) : getRandomMove();
