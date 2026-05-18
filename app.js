@@ -1,4 +1,4 @@
-let turnX = true; // X selalu mulai duluan
+let turnX = true; 
 let count = 0;
 let isVSComputer = false;
 let boardSize = 3;
@@ -7,6 +7,112 @@ let cpuSymbol = "O";
 let gameActive = true;
 let boardState = [];
 let winPatterns = [];
+
+// ==========================================
+// --- WEB AUDIO SYSTEM (TANPA FILE MP3) ---
+// ==========================================
+let audioCtx = null;
+let bgmNode = null;
+let audioEnabled = false;
+
+function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioEnabled = true;
+    startBGM();
+}
+
+// Efek Suara Synth Elektrik
+function playSound(type) {
+    if (!audioEnabled || !audioCtx) return;
+    
+    // Aktifkan AudioContext jika tertidur karena kebijakan browser
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+
+    if (type === 'click') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+    } else if (type === 'win') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.setValueAtTime(600, now + 0.1);
+        osc.frequency.setValueAtTime(900, now + 0.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.4);
+        osc.start(now);
+        osc.stop(now + 0.4);
+    } else if (type === 'draw') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(250, now);
+        osc.frequency.linearRampToValueAtTime(180, now + 0.2);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    }
+}
+
+// Background Music Looping Otomatis (Ambience Cyberpunk)
+function startBGM() {
+    if (!audioEnabled || !audioCtx) return;
+    try {
+        // Melodi Synth Looper Sederhana
+        bgmNode = audioCtx.createOscillator();
+        const bgmGain = audioCtx.createGain();
+        
+        bgmNode.type = 'sine';
+        bgmNode.frequency.setValueAtTime(110, audioCtx.currentTime); // Nada Bass A
+        
+        bgmGain.gain.setValueAtTime(0.04, audioCtx.currentTime); // Volume Background sangat kecil agar nyaman
+        
+        bgmNode.connect(bgmGain);
+        bgmGain.connect(audioCtx.destination);
+        bgmNode.start();
+        
+        // Modulasi frekuensi berkala agar berirama sci-fi
+        setInterval(() => {
+            if (audioEnabled && bgmNode && audioCtx) {
+                const notes = [110, 130, 146, 165];
+                const randomNote = notes[Math.floor(Math.random() * notes.length)];
+                bgmNode.frequency.exponentialRampToValueAtTime(randomNote, audioCtx.currentTime + 1);
+            }
+        }, 2000);
+    } catch(e) { console.log("BGM Init blocked"); }
+}
+
+function toggleAudio() {
+    if (!audioCtx) {
+        initAudio();
+        document.getElementById('audio-toggle-btn').innerHTML = '<i class="fas fa-volume-up"></i>';
+        return;
+    }
+    
+    audioEnabled = !audioEnabled;
+    const btn = document.getElementById('audio-toggle-btn');
+    
+    if (audioEnabled) {
+        btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (!bgmNode) startBGM();
+    } else {
+        btn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+        if (audioCtx.state === 'running') audioCtx.resume(); 
+    }
+}
 
 // --- SISTEM SKOR & DATA ---
 const loadData = () => {
@@ -28,16 +134,22 @@ const saveWin = (sym) => {
 };
 
 const resetAllData = () => {
+    playSound('click');
     if(confirm("Hapus semua progress?")) { localStorage.clear(); location.reload(); }
 };
 
 // --- NAVIGASI ---
 function showScene(id) {
+    initAudio(); // Memicu inisialisasi audio dari gestur pengguna pertama
+    playSound('click');
     document.querySelectorAll('.scene').forEach(s => s.classList.add('hide'));
     document.getElementById(id).classList.remove('hide');
 }
 
-function toggleOverlay(id) { document.getElementById(id).classList.toggle('hide'); }
+function toggleOverlay(id) { 
+    playSound('click');
+    document.getElementById(id).classList.toggle('hide'); 
+}
 
 function prepareGame(vsCPU) {
     isVSComputer = vsCPU;
@@ -45,15 +157,18 @@ function prepareGame(vsCPU) {
 }
 
 function pickSymbol(s) {
+    playSound('click');
     playerSymbol = s;
     cpuSymbol = (s === "X") ? "O" : "X";
     document.querySelectorAll('.mode-opt').forEach(b => b.classList.remove('active'));
+    document.getElementById('pick' + s).add;
     document.getElementById('pick' + s).classList.add('active');
 }
 
 // --- GAME LOGIC ---
 document.querySelectorAll('.size-opt').forEach(btn => {
     btn.onclick = () => {
+        playSound('click');
         document.querySelectorAll('.size-opt').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         boardSize = parseInt(btn.dataset.size);
@@ -66,6 +181,7 @@ document.getElementById('start-game-btn').onclick = () => {
 };
 
 const resetGame = () => {
+    playSound('click');
     turnX = true;
     count = 0;
     gameActive = true;
@@ -92,10 +208,12 @@ const generateBoard = () => {
 
 const handleMove = (idx, el) => {
     if (boardState[idx] !== "" || !gameActive) return;
+    
+    playSound('click'); // Mainkan efek klik pion ditaruh
     let sym = turnX ? "X" : "O";
     boardState[idx] = sym;
     el.innerText = sym;
-    el.style.color = (sym === "X") ? "var(--accent-blue)" : "#f97316";
+    el.style.color = (sym === "X") ? "var(--accent-blue)" : "var(--accent-orange)";
     el.classList.add("disabled");
     count++;
 
@@ -103,17 +221,17 @@ const handleMove = (idx, el) => {
         turnX = !turnX;
         updateUI();
         if (isVSComputer && ((turnX && cpuSymbol === "X") || (!turnX && cpuSymbol === "O"))) {
-            setTimeout(computerMove, 600);
+            setTimeout(computerMove, 500);
         }
     }
 };
 
-// --- AI CERDAS (MINIMAX) ---
+// --- AI CERDAS ---
 const computerMove = () => {
     if(!gameActive) return;
     let bestIdx = (boardSize === 3) ? getBestMove(boardState) : getRandomMove();
     let btn = document.querySelector(`[data-index='${bestIdx}']`);
-    handleMove(bestIdx, btn);
+    if(btn) handleMove(bestIdx, btn);
 };
 
 function getBestMove(board) {
@@ -127,7 +245,7 @@ function getBestMove(board) {
             if (score > bestScore) { bestScore = score; move = i; }
         }
     }
-    return move;
+    return move !== null ? move : getRandomMove();
 }
 
 function minimax(board, depth, isMax) {
@@ -178,8 +296,15 @@ const checkWinner = () => {
     if (res) {
         gameActive = false;
         document.getElementById('win-overlay').classList.remove('hide');
-        document.getElementById('win-text').innerText = res === "Draw" ? "SERI!" : (res === playerSymbol ? "YOU WIN!" : "CPU WINS!");
-        if (res !== "Draw") saveWin(res);
+        
+        if (res === "Draw") {
+            playSound('draw');
+            document.getElementById('win-text').innerText = "SERI!";
+        } else {
+            playSound('win');
+            document.getElementById('win-text').innerText = res === playerSymbol ? "YOU WIN!" : "CPU WINS!";
+            saveWin(res);
+        }
         return true;
     }
     return false;
